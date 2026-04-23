@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'screens/profile_screen.dart';  // ← ADD THIS
+import 'screens/profile_screen.dart';  
+import 'screens/home_screen.dart';// ← ADD THIS
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +19,7 @@ class MyApp extends StatelessWidget {
       title: 'RozgarLink',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.orange),
-      home: ProfileScreen(),  // ← CHANGE THIS LINE
+      home: HomeScreen(),  // ← CHANGE THIS LINE
     );
   }
 }
