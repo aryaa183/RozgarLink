@@ -9,41 +9,36 @@ The app supports two user roles — Worker and Employer — and provides feature
 🎯 Domain
 Labour Tech / Social Impact
 
-✨ Features
-🔥 Firebase (Group A)
+# Features
+1.Firebase (Group A)
+Firebase Authentication — Secure login and registration for Workers and Employers
+Cloud Firestore — Real-time job listings and worker profiles
+Payment Tracking — Mock daily wage history stored in Firestore
 
-🔐 Firebase Authentication — Secure login and registration for Workers and Employers
-📋 Cloud Firestore — Real-time job listings and worker profiles
-💳 Payment Tracking — Mock daily wage history stored in Firestore
+2.Image Transformation (Group B)
+Scaling — Zoom profile photo in and out
+Rotation — Rotate profile photo to any angle
+Translation — Move profile photo horizontally and vertically
+Image Picker — Pick photo from Gallery or Camera
 
-🖼️ Image Transformation (Group B)
+3.Time Picker (Group B)
+Shift Start & End Time — Worker selects available work hours
+Job Reminder Alarm — Set reminder for next day's job
+Application Tracking — Track applied jobs with shift timings
 
-🔍 Scaling — Zoom profile photo in and out
-🔄 Rotation — Rotate profile photo to any angle
-↔️ Translation — Move profile photo horizontally and vertically
-📷 Image Picker — Pick photo from Gallery or Camera
-
-⏰ Time Picker (Group B)
-
-🕐 Shift Start & End Time — Worker selects available work hours
-⏰ Job Reminder Alarm — Set reminder for next day's job
-📅 Application Tracking — Track applied jobs with shift timings
-
-🎬 Multimedia (Group B)
-
-📹 Video Player — Skill training tutorial videos with controls
-🎧 Audio Player — Job site audio briefs from employers
-⏩ Playback Controls — Play, pause, seek, forward, rewind
+4.Multimedia (Group B)
+Video Player — Skill training tutorial videos with controls
+Audio Player — Job site audio briefs from employers
+Playback Controls — Play, pause, seek, forward, rewind
 
 
-📱 App Screens
+# App Screens
 ScreenDescription🌅 Splash ScreenApp logo and tagline🔐 Login ScreenFirebase Auth login📝 Register ScreenWorker or Employer registration🏠 Home ScreenReal-time job listings from Firestore👤 Profile ScreenImage transformation editor📋 Job Detail ScreenJob info + time picker + apply🎓 Learn ScreenVideo & audio skill training💰 Payment ScreenMock daily wage history
 
-👥 Team Division
+# Team Division
 MemberModuleResponsibilityMember 1Firebase + Auth + HomeLogin, Register, Firestore job listingsMember 2Image TransformationProfile screen with scale, rotate, translateMember 3Time Picker + JobsJob detail screen, shift timing, remindersMember 4MultimediaVideo player, audio player, learn screen
 
-🛠️ Tech Stack
-
+🛠️Tech Stack
 Frontend — Flutter (Dart)
 Backend — Firebase (Auth + Firestore)
 Packages — image_picker, video_player, audioplayers, cloud_firestore, firebase_auth
@@ -51,7 +46,6 @@ Packages — image_picker, video_player, audioplayers, cloud_firestore, firebase
 
 🚀 Getting Started
 Prerequisites
-
 Flutter SDK installed
 Android Studio or VS Code
 Firebase project configured
@@ -59,7 +53,6 @@ Firebase project configured
 Installation
 
 Clone the repository
-
 bashgit clone https://github.com/aryaa183/RozgarLink.git
 cd RozgarLink
 
@@ -101,7 +94,14 @@ lib/
    - worker_id, job_id, amount, date, status
 
 📊 Lab Assignment Coverage
-Lab AssignmentFeatureScreenStatusFirebase AuthLogin / RegisterLogin Screen✅Firebase FirestoreReal-time job listingsHome Screen✅Image TranslationMove photo X/YProfile Screen✅Image ScalingZoom photoProfile Screen✅Image RotationRotate photoProfile Screen✅Time PickerShift selector + reminderJob Detail Screen✅Video PlayerSkill training videosLearn Screen✅Audio PlayerJob audio briefsLearn Screen✅
+Lab AssignmentFeatureScreenStatusFirebase AuthLogin / RegisterLogin Screen
+✅Firebase FirestoreReal-time job listingsHome Screen
+✅Image TranslationMove photo X/YProfile Screen
+✅Image ScalingZoom photoProfile Screen
+✅Image RotationRotate photoProfile Screen
+✅Time PickerShift selector + reminderJob Detail Screen
+✅Video PlayerSkill training videosLearn Screen
+✅Audio PlayerJob audio briefsLearn Screen✅
 
 💡 Social Impact
 RozgarLink addresses a critical problem faced by millions of daily wage workers in India:
