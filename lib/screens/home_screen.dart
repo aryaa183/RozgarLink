@@ -1,123 +1,255 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/auth_service.dart';
 import 'profile_screen.dart';
 import 'job_detail_screen.dart';
 import 'learn_screen.dart';
 import 'payment_screen.dart';
+import 'saved_jobs_screen.dart';
+import 'applied_jobs_screen.dart';
+import 'notification_screen.dart';
 
-class HomeScreen extends StatelessWidget {
-  final AuthService _auth = AuthService();
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+
+  int _currentIndex = 0;
+  String search = "";
+  String selectedCategory = "All";
+
+  final categories = ["All", "Construction", "Electrical", "Delivery"];
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
+
+      // 🔥 DRAWER
+      drawer: Drawer(
+        child: ListView(
+          children: [
+
+            DrawerHeader(
+              decoration: BoxDecoration(color: Colors.orange),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.work, size: 50, color: Colors.white),
+                  SizedBox(height: 10),
+                  Text("RozgarLink",
+                      style: TextStyle(color: Colors.white, fontSize: 20)),
+                ],
+              ),
+            ),
+
+            ListTile(
+              leading: Icon(Icons.payment),
+              title: Text("Payments"),
+              onTap: () {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => PaymentScreen()));
+              },
+            ),
+
+            ListTile(
+              leading: Icon(Icons.notifications),
+              title: Text("Notifications"),
+              onTap: () {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => NotificationScreen()));
+              },
+            ),
+          ],
+        ),
+      ),
+
       appBar: AppBar(
-        title: Text("RozgarLink - Jobs"),
+        title: Text("RozgarLink"),
         backgroundColor: Colors.orange,
+
         actions: [
+          IconButton(
+            icon: Icon(Icons.notifications),
+            onPressed: () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => NotificationScreen()));
+            },
+          ),
+
           IconButton(
             icon: Icon(Icons.person),
             onPressed: () {
               Navigator.push(context,
-                  MaterialPageRoute(
-                      builder: (_) => ProfileScreen()));
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.logout),
-            onPressed: () async {
-              await _auth.logout();
-              Navigator.pushReplacement(context,
-                  MaterialPageRoute(
-                      builder: (_) => ProfileScreen()));
+                  MaterialPageRoute(builder: (_) => ProfileScreen()));
             },
           ),
         ],
       ),
 
-      // ── JOB LIST ──
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('jobs')
-            .snapshots(),
-        builder: (context, snapshot) {
+      body: _currentIndex == 0
+          ? _buildJobsScreen()
+          : _currentIndex == 1
+              ? SavedJobsScreen()
+              : _currentIndex == 2
+                  ? AppliedJobsScreen()
+                  : LearnScreen(),
 
-          if (!snapshot.hasData) {
-            return Center(child: CircularProgressIndicator());
-          }
+      // 🔥 FIXED BOTTOM NAV (NO FADE ISSUE)
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
 
-          final jobs = snapshot.data!.docs;
+        // ✅ COLORS FIX
+        selectedItemColor: Colors.orange,
+        unselectedItemColor: Colors.black87, // 👈 NOT FADED NOW
 
-          if (jobs.isEmpty) {
-            return Center(child: Text("No jobs available"));
-          }
+        // ✅ KEEP LABELS ALWAYS VISIBLE
+        showUnselectedLabels: true,
 
-          return ListView.builder(
-            itemCount: jobs.length,
-            itemBuilder: (context, index) {
+        // ✅ IMPORTANT (PREVENT FADE EFFECT)
+        type: BottomNavigationBarType.fixed,
 
-              final job = jobs[index];
-              final data = job.data() as Map<String, dynamic>;
+        onTap: (i) {
+          setState(() => _currentIndex = i);
+        },
 
-              return Card(
-                margin: EdgeInsets.all(10),
-                elevation: 3,
-                child: ListTile(
-                  leading: Icon(Icons.work,
-                      color: Colors.orange, size: 35),
+        items: const [
+          BottomNavigationBarItem(
+              icon: Icon(Icons.work), label: "Jobs"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.bookmark), label: "Saved"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.assignment), label: "Applied"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.school), label: "Learn"),
+        ],
+      ),
+    );
+  }
 
-                  title: Text(
-                    data['title'] ?? 'No Title',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold),
-                  ),
+  // 🔥 JOB UI (UNCHANGED)
+  Widget _buildJobsScreen() {
+    return Column(
+      children: [
 
-                  subtitle: Text(
-                    "₹${data['wage'] ?? 'N/A'} / day • ${data['location'] ?? 'Unknown'}",
-                  ),
+        Padding(
+          padding: EdgeInsets.all(10),
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: "Search jobs...",
+              prefixIcon: Icon(Icons.search),
+              filled: true,
+              fillColor: Colors.grey[200],
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none),
+            ),
+            onChanged: (val) {
+              setState(() => search = val.toLowerCase());
+            },
+          ),
+        ),
 
-                  trailing: Icon(Icons.arrow_forward_ios),
-
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            JobDetailScreen(jobData: job),
-                      ),
-                    );
+        SizedBox(
+          height: 50,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: categories.length,
+            itemBuilder: (_, i) {
+              final cat = categories[i];
+              return Padding(
+                padding: EdgeInsets.symmetric(horizontal: 5),
+                child: ChoiceChip(
+                  label: Text(cat),
+                  selected: selectedCategory == cat,
+                  selectedColor: Colors.orange,
+                  onSelected: (_) {
+                    setState(() => selectedCategory = cat);
                   },
                 ),
               );
             },
-          );
-        },
-      ),
+          ),
+        ),
 
-      // ── BOTTOM NAV ──
-      bottomNavigationBar: BottomNavigationBar(
-        selectedItemColor: Colors.orange,
-        items: [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.home), label: "Jobs"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.play_circle), label: "Learn"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.payment), label: "Payments"),
-        ],
-        onTap: (index) {
-          if (index == 1) {
-            Navigator.push(context,
-                MaterialPageRoute(
-                    builder: (_) => LearnScreen()));
-          } else if (index == 2) {
-            Navigator.push(context,
-                MaterialPageRoute(
-                    builder: (_) => PaymentScreen()));
-          }
-        },
-      ),
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('jobs').snapshots(),
+            builder: (context, snapshot) {
+
+              if (!snapshot.hasData) {
+                return Center(child: CircularProgressIndicator());
+              }
+
+              final jobs = snapshot.data!.docs.where((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final title = (data['title'] ?? "").toLowerCase();
+                final category = data['category'] ?? "";
+
+                return title.contains(search) &&
+                    (selectedCategory == "All" ||
+                        category == selectedCategory);
+              }).toList();
+
+              return ListView.builder(
+                itemCount: jobs.length,
+                itemBuilder: (context, index) {
+
+                  final job = jobs[index];
+                  final data = job.data() as Map<String, dynamic>;
+
+                  return Container(
+                    margin: EdgeInsets.all(10),
+                    padding: EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black12, blurRadius: 5)
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+
+                        Text(data['title'] ?? '',
+                            style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold)),
+
+                        SizedBox(height: 5),
+
+                        Text("₹${data['wage']} / day",
+                            style: TextStyle(color: Colors.green)),
+
+                        Text(data['location'] ?? ''),
+
+                        SizedBox(height: 10),
+
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(context,
+                                  MaterialPageRoute(
+                                      builder: (_) =>
+                                          JobDetailScreen(jobData: job)));
+                            },
+                            child: Text("View"),
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange),
+                          ),
+                        )
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

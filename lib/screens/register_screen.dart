@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import 'home_screen.dart';
+import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   @override
@@ -8,86 +8,138 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
-  String _role = 'worker';
+
   final AuthService _auth = AuthService();
+
   bool _loading = false;
+  bool _obscurePassword = true;
 
   void _register() async {
-    setState(() => _loading = true);
-    final user = await _auth.register(
-      _nameCtrl.text.trim(),
-      _emailCtrl.text.trim(),
-      _passCtrl.text.trim(),
-      _role,
-    );
-    setState(() => _loading = false);
-    if (user != null) {
-      Navigator.pushReplacement(context,
-        MaterialPageRoute(builder: (_) => HomeScreen()));
+    String name = _nameCtrl.text.trim();
+    String email = _emailCtrl.text.trim();
+    String password = _passCtrl.text.trim();
+
+    // ✅ VALIDATIONS
+    if (name.isEmpty) {
+      _showMessage("Please enter name");
+      return;
     }
+
+    if (email.isEmpty || !email.contains("@")) {
+      _showMessage("Please enter valid email");
+      return;
+    }
+
+    if (password.length < 6) {
+      _showMessage("Password must be at least 6 characters");
+      return;
+    }
+
+    setState(() => _loading = true);
+
+    // ✅ FIXED (4 parameters)
+    String? error = await _auth.register(
+      name,
+      email,
+      password,
+      "worker", // role added
+    );
+
+    setState(() => _loading = false);
+
+    if (error == null) {
+      _showMessage("Registration successful");
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => LoginScreen()),
+      );
+    } else {
+      _showMessage(error);
+    }
+  }
+
+  void _showMessage(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Register"),
-        backgroundColor: Colors.orange),
+      appBar: AppBar(
+        title: Text("Register"),
+        backgroundColor: Colors.orange,
+      ),
       body: Padding(
         padding: EdgeInsets.all(24),
         child: Column(
           children: [
+
+            // NAME
             TextField(
               controller: _nameCtrl,
               decoration: InputDecoration(
-                labelText: "Full Name",
+                labelText: "Name",
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person)),
+                prefixIcon: Icon(Icons.person),
+              ),
             ),
+
             SizedBox(height: 16),
+
+            // EMAIL
             TextField(
               controller: _emailCtrl,
               decoration: InputDecoration(
                 labelText: "Email",
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.email)),
+                prefixIcon: Icon(Icons.email),
+              ),
             ),
+
             SizedBox(height: 16),
+
+            // PASSWORD WITH EYE ICON
             TextField(
               controller: _passCtrl,
-              obscureText: true,
+              obscureText: _obscurePassword,
               decoration: InputDecoration(
                 labelText: "Password",
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.lock)),
-            ),
-            SizedBox(height: 16),
-            Row(
-              children: [
-                Text("Register as: ",
-                  style: TextStyle(fontSize: 16)),
-                Radio(value: 'worker', groupValue: _role,
-                  onChanged: (v) =>
-                    setState(() => _role = v.toString())),
-                Text("Worker"),
-                Radio(value: 'employer', groupValue: _role,
-                  onChanged: (v) =>
-                    setState(() => _role = v.toString())),
-                Text("Employer"),
-              ],
-            ),
-            SizedBox(height: 24),
-            _loading
-              ? CircularProgressIndicator()
-              : ElevatedButton(
-                  onPressed: _register,
-                  child: Text("Register"),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: Size(double.infinity, 50),
-                    backgroundColor: Colors.orange),
+                prefixIcon: Icon(Icons.lock),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
                 ),
+              ),
+            ),
+
+            SizedBox(height: 24),
+
+            _loading
+                ? CircularProgressIndicator()
+                : ElevatedButton(
+                    onPressed: _register,
+                    child: Text("Register"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      minimumSize: Size(double.infinity, 50),
+                    ),
+                  ),
           ],
         ),
       ),
