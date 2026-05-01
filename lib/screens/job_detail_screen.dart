@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class JobDetailScreen extends StatefulWidget {
   final dynamic jobData;
@@ -85,9 +86,13 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
   }
 
   Future<void> _applyJob() async {
+    final user = FirebaseAuth.instance.currentUser;
+    
     try {
       final ref = FirebaseFirestore.instance.collection('applications');
-      final existing = await ref.where('jobId', isEqualTo: jobId).get();
+      final existing = await ref.where('jobId', isEqualTo: jobId)
+          .where('workerId', isEqualTo: user?.uid)
+          .get();
 
       if (existing.docs.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -102,11 +107,40 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
         return;
       }
 
+      // Get worker info
+      final workerDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user?.uid)
+          .get();
+      final workerData = workerDoc.data() ?? {};
+
       await ref.add({
         'jobId': jobId,
-        'title': data['title'],
+        'jobTitle': data['title'],
+        'workerId': user?.uid,
+        'workerName': workerData['name'] ?? 'Worker',
+        'workerEmail': user?.email,
+        'employerId': data['employerId'],
         'status': 'Applied',
-        'date': DateTime.now(),
+        'appliedAt': DateTime.now(),
+      });
+
+      // Update job application count
+      if (data['id'] != null) {
+        await FirebaseFirestore.instance.collection('jobs').doc(data['id']).update({
+          'applicationCount': FieldValue.increment(1),
+        });
+      }
+
+      // Send notification to employer
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'type': 'new_application',
+        'title': 'New Application',
+        'body': '${workerData['name'] ?? "A worker"} applied for ${data['title']}',
+        'employerId': data['employerId'],
+        'jobId': jobId,
+        'createdAt': DateTime.now(),
+        'read': false,
       });
     } catch (e) {
       // works with mock data too

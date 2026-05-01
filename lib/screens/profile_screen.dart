@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,6 +17,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   File? _image;
   Uint8List? _webImage;
   final ImagePicker _picker = ImagePicker();
+  final AuthService _auth = AuthService();
+  String? _savedProfileImage;
+  bool _isSaving = false;
 
   double scale = 1;
   double rotation = 0;
@@ -23,6 +27,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
   double y = 0;
 
   final user = FirebaseAuth.instance.currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileImage();
+  }
+
+  Future<void> _loadProfileImage() async {
+    final url = await _auth.getProfileImage();
+    if (url != null && mounted) {
+      setState(() => _savedProfileImage = url);
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    if (_image == null && _webImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Please select an image first"),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      String? url;
+      if (kIsWeb) {
+        url = await _auth.saveProfilePictureWeb(_webImage!.toList());
+      } else {
+        url = await _auth.saveProfilePicture(_image!);
+      }
+
+      if (url != null && mounted) {
+        setState(() => _savedProfileImage = url);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Profile picture saved successfully!"),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to save profile picture"),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error: ${e.toString()}"),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
 
   Future<void> pickImage(ImageSource source) async {
     final picked = await _picker.pickImage(source: source);
@@ -182,8 +258,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               radius: 40,
                               backgroundColor:
                                   Colors.white.withOpacity(0.3),
-                              child: Icon(Icons.person,
-                                  size: 44, color: Colors.white),
+                              backgroundImage: _savedProfileImage != null
+                                  ? NetworkImage(_savedProfileImage!)
+                                  : null,
+                              child: _savedProfileImage == null
+                                  ? Icon(Icons.person,
+                                      size: 44, color: Colors.white)
+                                  : null,
                             ),
                           ),
                           SizedBox(height: 10),
@@ -452,6 +533,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
 
                   SizedBox(height: 16),
+
+                  // Save Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: _saveProfile,
+                      icon: Icon(Icons.save, color: Colors.white),
+                      label: Text("Save Profile Picture",
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 12),
 
                   // Reset Button
                   SizedBox(

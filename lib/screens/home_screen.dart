@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'profile_screen.dart';
 import 'job_detail_screen.dart';
 import 'learn_screen.dart';
@@ -16,9 +17,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String search = "";
   String selectedCategory = "All";
 
-  final categories = ["All", "Construction", "Electrical", "Delivery", "Plumbing"];
+  final categories = ["All", "Construction", "Electrical", "Delivery", "Plumbing", "Painting", "Carpenter", "Welder", "Other"];
 
-  // ── HARDCODED JOBS DATA ──────────────────────────────────
+  // ── HARDCODED JOBS DATA (Fallback) ──────────────────────────────────
   final List<Map<String, dynamic>> allJobs = [
     {
       'title': 'Construction Worker',
@@ -69,6 +70,32 @@ class _HomeScreenState extends State<HomeScreen> {
       'employer': 'VoltCare',
     },
   ];
+
+  // Check if job is expired
+  bool _isJobExpired(Map<String, dynamic> data) {
+    if (data['endDate'] == null) return false;
+    try {
+      final endDate = (data['endDate'] as Timestamp).toDate();
+      return endDate.isBefore(DateTime.now());
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Format date for display
+  String _formatDate(dynamic date) {
+    if (date == null) return '';
+    try {
+      if (date is Timestamp) {
+        return "${date.toDate().day}/${date.toDate().month}/${date.toDate().year}";
+      } else if (date is DateTime) {
+        return "${date.day}/${date.month}/${date.year}";
+      }
+      return '';
+    } catch (e) {
+      return '';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -192,14 +219,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── JOBS SCREEN ──────────────────────────────────────────
   Widget _buildJobsScreen() {
-    // Filter jobs
-    final filtered = allJobs.where((job) {
-      final title = job['title'].toLowerCase();
-      final category = job['category'];
-      return title.contains(search) &&
-          (selectedCategory == "All" || category == selectedCategory);
-    }).toList();
-
     return Column(
       children: [
         // Header Banner
@@ -222,7 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontSize: 22,
                       fontWeight: FontWeight.bold)),
               SizedBox(height: 4),
-              Text("${allJobs.length} jobs available near you",
+              Text("Jobs posted by employers",
                   style: TextStyle(color: Colors.white70, fontSize: 13)),
               SizedBox(height: 12),
               // Search Bar
@@ -295,24 +314,47 @@ class _HomeScreenState extends State<HomeScreen> {
 
         SizedBox(height: 8),
 
-        // Jobs Count
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: Row(
-            children: [
-              Text("${filtered.length} jobs found",
-                  style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500)),
-            ],
-          ),
-        ),
-
-        // Job Cards
+        // Jobs from Firestore
         Expanded(
-          child: filtered.isEmpty
-              ? Center(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('jobs')
+                .orderBy('createdAt', descending: true)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return Center(child: CircularProgressIndicator());
+              }
+
+              final allFirestoreJobs = snapshot.data!.docs
+                  .map((doc) => {
+                        ...doc.data() as Map<String, dynamic>,
+                        'id': doc.id,
+                      })
+                  .toList();
+
+              // Filter jobs
+              final filtered = allFirestoreJobs.where((job) {
+                final title = (job['title'] ?? '').toString().toLowerCase();
+                final category = job['category'] ?? '';
+                final matchesSearch = title.contains(search);
+                final matchesCategory = selectedCategory == "All" || category == selectedCategory;
+                final isExpired = _isJobExpired(job);
+                return matchesSearch && matchesCategory && !isExpired;
+              }).toList();
+
+              // Also include hardcoded jobs if no firestore jobs
+              final combinedJobs = allFirestoreJobs.isEmpty
+                  ? allJobs.where((job) {
+                      final title = job['title'].toLowerCase();
+                      final category = job['category'];
+                      return title.contains(search) &&
+                          (selectedCategory == "All" || category == selectedCategory);
+                    }).toList()
+                  : filtered;
+
+              if (combinedJobs.isEmpty) {
+                return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -320,17 +362,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       SizedBox(height: 10),
                       Text("No jobs found",
                           style: TextStyle(color: Colors.grey)),
+                      SizedBox(height: 4),
+                      Text("Try different search or category",
+                          style: TextStyle(color: Colors.grey[400], fontSize: 12)),
                     ],
                   ),
-                )
-              : ListView.builder(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    final job = filtered[index];
-                    return _buildJobCard(job, context);
-                  },
-                ),
+                );
+              }
+
+              return ListView.builder(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                itemCount: combinedJobs.length,
+                itemBuilder: (context, index) {
+                  final job = combinedJobs[index];
+                  return _buildJobCard(job, context);
+                },
+              );
+            },
+          ),
         ),
       ],
     );
@@ -343,8 +392,43 @@ class _HomeScreenState extends State<HomeScreen> {
       'Electrical': Colors.yellow[800],
       'Delivery': Colors.blue,
       'Plumbing': Colors.teal,
+      'Painting': Colors.purple,
+      'Carpenter': Colors.brown,
+      'Welder': Colors.red,
+      'Other': Colors.grey,
     };
     final color = categoryColors[job['category']] ?? Colors.orange;
+    
+    // Get deadline info
+    String deadlineText = '';
+    bool isExpiringSoon = false;
+    if (job['endDate'] != null) {
+      try {
+        DateTime endDate;
+        if (job['endDate'] is Timestamp) {
+          endDate = (job['endDate'] as Timestamp).toDate();
+        } else {
+          endDate = job['endDate'] as DateTime;
+        }
+        
+        final now = DateTime.now();
+        final daysLeft = endDate.difference(now).inDays;
+        
+        if (daysLeft < 0) {
+          deadlineText = 'Expired';
+        } else if (daysLeft == 0) {
+          deadlineText = 'Expires today';
+          isExpiringSoon = true;
+        } else if (daysLeft <= 3) {
+          deadlineText = 'Expires in $daysLeft days';
+          isExpiringSoon = true;
+        } else {
+          deadlineText = 'Deadline: ${_formatDate(job['endDate'])}';
+        }
+      } catch (e) {
+        deadlineText = '';
+      }
+    }
 
     return Container(
       margin: EdgeInsets.only(bottom: 12),
@@ -367,7 +451,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: color!.withOpacity(0.1),
+                    color: color.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(Icons.work, color: color, size: 24),
@@ -377,13 +461,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(job['title'],
+                      Text(job['title'] ?? job['title'],
                           style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: Colors.black87)),
                       SizedBox(height: 2),
-                      Text(job['employer'],
+                      Text(job['employerName'] ?? job['employer'] ?? 'Employer',
                           style: TextStyle(
                               color: Colors.grey[600], fontSize: 12)),
                     ],
@@ -412,17 +496,57 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Icon(Icons.location_on, size: 14, color: Colors.grey),
                 SizedBox(width: 4),
-                Text(job['location'],
-                    style:
-                        TextStyle(color: Colors.grey[600], fontSize: 12)),
-                SizedBox(width: 16),
-                Icon(Icons.access_time, size: 14, color: Colors.grey),
-                SizedBox(width: 4),
-                Text(job['shift'],
-                    style:
-                        TextStyle(color: Colors.grey[600], fontSize: 12)),
+                Expanded(
+                  child: Text(job['location'] ?? '',
+                      style:
+                          TextStyle(color: Colors.grey[600], fontSize: 12),
+                      overflow: TextOverflow.ellipsis),
+                ),
               ],
             ),
+            SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.access_time, size: 14, color: Colors.grey),
+                SizedBox(width: 4),
+                Text(job['shift'] ?? '',
+                    style:
+                        TextStyle(color: Colors.grey[600], fontSize: 12)),
+                if (job['workersNeeded'] != null) ...[
+                  SizedBox(width: 16),
+                  Icon(Icons.people, size: 14, color: Colors.grey),
+                  SizedBox(width: 4),
+                  Text("${job['workersNeeded']} workers needed",
+                      style:
+                          TextStyle(color: Colors.grey[600], fontSize: 12)),
+                ],
+              ],
+            ),
+            // Deadline Row
+            if (deadlineText.isNotEmpty) ...[
+              SizedBox(height: 8),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isExpiringSoon ? Colors.red[50] : Colors.orange[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.calendar_today, 
+                        size: 12, 
+                        color: isExpiringSoon ? Colors.red : Colors.orange),
+                    SizedBox(width: 4),
+                    Text(deadlineText,
+                        style: TextStyle(
+                            color: isExpiringSoon ? Colors.red[700] : Colors.orange[700],
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ],
             SizedBox(height: 12),
             // Category + Button Row
             Row(
@@ -435,7 +559,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: color.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(job['category'],
+                  child: Text(job['category'] ?? 'Other',
                       style: TextStyle(
                           color: color,
                           fontSize: 11,

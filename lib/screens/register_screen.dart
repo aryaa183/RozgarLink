@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
+import 'home_screen.dart';
+import 'employer_home_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   @override
@@ -40,8 +42,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (error == null) {
       _showMessage("Registration successful!", isError: false);
-      Navigator.pushReplacement(context,
-          MaterialPageRoute(builder: (_) => LoginScreen()));
+      
+      // Redirect based on role
+      if (_selectedRole == 'employer') {
+        Navigator.pushReplacement(context,
+            MaterialPageRoute(builder: (_) => EmployerHomeScreen()));
+      } else {
+        Navigator.pushReplacement(context,
+            MaterialPageRoute(builder: (_) => HomeScreen()));
+      }
     } else {
       _showMessage(error, isError: true);
     }

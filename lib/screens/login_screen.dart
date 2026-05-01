@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import 'register_screen.dart';
 import 'home_screen.dart';
+import 'employer_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -15,7 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   bool _obscurePassword = true;
 
-  void _login() async {
+  Future<void> _login() async {
     String email = _emailCtrl.text.trim();
     String password = _passCtrl.text.trim();
 
@@ -33,8 +35,25 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _loading = false);
 
     if (error == null) {
-      Navigator.pushReplacement(context,
-          MaterialPageRoute(builder: (_) => HomeScreen()));
+      // Check user role and redirect accordingly
+      final user = _auth.currentUser;
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        
+        if (userDoc.exists && userDoc.get('role') == 'employer') {
+          Navigator.pushReplacement(context,
+              MaterialPageRoute(builder: (_) => EmployerHomeScreen()));
+        } else {
+          Navigator.pushReplacement(context,
+              MaterialPageRoute(builder: (_) => HomeScreen()));
+        }
+      } else {
+        Navigator.pushReplacement(context,
+            MaterialPageRoute(builder: (_) => HomeScreen()));
+      }
     } else {
       _showMessage(error);
     }
