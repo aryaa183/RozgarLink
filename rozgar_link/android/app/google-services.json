@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "599399866992",
+    "project_id": "rozgarlink-b8525",
+    "storage_bucket": "rozgarlink-b8525.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:599399866992:android:301a598b3167834dca0ab5",
+        "android_client_info": {
+          "package_name": "com.example.rozgar_link"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAHggLkPYNPLIBLuvluAg0b6wYDSDNpTA0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
