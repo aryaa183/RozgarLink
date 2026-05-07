@@ -2,13 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+// class JobDetailScreen extends StatefulWidget {
+//   final dynamic jobData;
+//   JobDetailScreen({required this.jobData});
+
+//   @override
+//   _JobDetailScreenState createState() => _JobDetailScreenState();
+// }
+
 class JobDetailScreen extends StatefulWidget {
+
   final dynamic jobData;
-  JobDetailScreen({required this.jobData});
+
+  const JobDetailScreen({
+    super.key,
+    required this.jobData,
+  });
 
   @override
-  _JobDetailScreenState createState() => _JobDetailScreenState();
+  State<JobDetailScreen> createState() =>
+      _JobDetailScreenState();
 }
+
 
 class _JobDetailScreenState extends State<JobDetailScreen> {
   bool _saved = false;
